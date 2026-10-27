@@ -1,0 +1,88 @@
+package com.liquidglass.tv.ui.glass
+
+import android.graphics.RenderEffect
+import android.graphics.Shader
+import android.os.Build
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+
+/**
+ * Модификатор Liquid Glass с эффектом преломления, границ и фокуса для Android TV
+ */
+fun Modifier.liquidGlass(
+    isFocused: Boolean = false,
+    cornerRadius: Dp = 24.dp,
+    glassOpacity: Float = 0.22f,
+    blurRadius: Float = 35f,
+    tintColor: Color = Color.White,
+    focusAccent: Color = Color(0xFF64B5F6),
+    borderThickness: Dp = 1.2.dp
+): Modifier = composed {
+    val scale by animateFloatAsState(
+        targetValue = if (isFocused) 1.08f else 1.0f,
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 380f),
+        label = "glassScale"
+    )
+
+    val currentBorderBrush = if (isFocused) {
+        Brush.linearGradient(
+            listOf(
+                focusAccent.copy(alpha = 0.95f),
+                focusAccent.copy(alpha = 0.35f),
+                Color.White.copy(alpha = 0.6f)
+            )
+        )
+    } else {
+        Brush.linearGradient(
+            listOf(
+                Color.White.copy(alpha = 0.45f),
+                Color.White.copy(alpha = 0.08f),
+                Color.White.copy(alpha = 0.2f)
+            )
+        )
+    }
+
+    this
+        .scale(scale)
+        .clip(RoundedCornerShape(cornerRadius))
+        .then(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && blurRadius > 0f) {
+                Modifier.graphicsLayer {
+                    this.renderEffect = RenderEffect
+                        .createBlurEffect(blurRadius, blurRadius, Shader.TileMode.CLAMP)
+                        .asComposeRenderEffect()
+                }
+            } else Modifier
+        )
+        .background(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    tintColor.copy(alpha = (glassOpacity * 1.3f).coerceAtMost(0.9f)),
+                    tintColor.copy(alpha = (glassOpacity * 0.7f).coerceAtMost(0.8f))
+                ),
+                radius = 700f
+            ),
+            shape = RoundedCornerShape(cornerRadius)
+        )
+        .border(
+            width = if (isFocused) borderThickness * 1.5f else borderThickness,
+            brush = currentBorderBrush,
+            shape = RoundedCornerShape(cornerRadius)
+        )
+}

@@ -1,0 +1,195 @@
+package com.liquidglass.tv.ui.screens
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.google.accompanist.drawablepainter.rememberDrawablePainter
+import com.liquidglass.tv.data.GlassConfig
+import com.liquidglass.tv.data.InstalledApp
+import com.liquidglass.tv.ui.glass.liquidGlass
+import java.text.SimpleDateFormat
+import java.util.*
+
+@Composable
+fun HomeScreen(
+    apps: List<InstalledApp>,
+    config: GlassConfig,
+    onOpenSettings: () -> Unit
+) {
+    val context = LocalContext.current
+    var currentTime by remember { mutableStateOf("") }
+    var currentDate by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val dateFormat = SimpleDateFormat("EEEE, d MMMM", Locale.getDefault())
+        while (true) {
+            currentTime = timeFormat.format(Date())
+            currentDate = dateFormat.format(Date())
+            kotlinx.coroutines.delay(1000)
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xFF0F172A),
+                        Color(0xFF0A0F1D),
+                        Color(0xFF020617)
+                    )
+                )
+            )
+            .padding(horizontal = 48.dp, vertical = 32.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Верхняя стеклянная панель: Время, Дата, Погода, Настройки
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 28.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (config.showClock) {
+                    Column {
+                        Text(
+                            text = currentTime,
+                            fontSize = 52.sp,
+                            fontWeight = FontWeight.Light,
+                            color = Color.White
+                        )
+                        Text(
+                            text = currentDate,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White.copy(alpha = 0.65f)
+                        )
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (config.showWeather) {
+                        var weatherFocused by remember { mutableStateOf(false) }
+                        Row(
+                            modifier = Modifier
+                                .onFocusChanged { weatherFocused = it.isFocused }
+                                .liquidGlass(
+                                    isFocused = weatherFocused,
+                                    cornerRadius = config.cornerRadius.dp,
+                                    glassOpacity = config.opacity,
+                                    blurRadius = config.blur
+                                )
+                                .padding(horizontal = 20.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Cloud, contentDescription = null, tint = Color.White)
+                            Spacer(Modifier.width(8.dp))
+                            Text("+21°C Солнечно", color = Color.White, fontSize = 16.sp)
+                        }
+                    }
+
+                    Spacer(Modifier.width(16.dp))
+
+                    // Кнопка перехода в Liquid Настройки
+                    var settingsFocused by remember { mutableStateOf(false) }
+                    Box(
+                        modifier = Modifier
+                            .onFocusChanged { settingsFocused = it.isFocused }
+                            .liquidGlass(
+                                isFocused = settingsFocused,
+                                cornerRadius = 40.dp,
+                                glassOpacity = config.opacity,
+                                blurRadius = config.blur
+                            )
+                            .focusable()
+                            .clickable { onOpenSettings() }
+                            .padding(14.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = "Настройки",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
+
+            // Сетка приложений
+            Text(
+                text = "Приложения",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White.copy(alpha = 0.85f),
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(config.gridColumns),
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                contentPadding = PaddingValues(bottom = 24.dp)
+            ) {
+                items(apps) { app ->
+                    var isFocused by remember { mutableStateOf(false) }
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .onFocusChanged { isFocused = it.isFocused }
+                            .liquidGlass(
+                                isFocused = isFocused,
+                                cornerRadius = config.cornerRadius.dp,
+                                glassOpacity = config.opacity,
+                                blurRadius = config.blur
+                            )
+                            .focusable()
+                            .clickable {
+                                app.launchIntent?.let { context.startActivity(it) }
+                            }
+                            .padding(18.dp)
+                    ) {
+                        Image(
+                            painter = rememberDrawablePainter(drawable = app.icon),
+                            contentDescription = app.name,
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            text = app.name,
+                            color = Color.White,
+                            fontSize = 15.sp,
+                            maxLines = 1,
+                            fontWeight = if (isFocused) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
